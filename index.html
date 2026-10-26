@@ -1,7 +1,5 @@
-
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -79,9 +77,7 @@ input{
     font-size:15px;
     outline:none;
 }
-input:focus{
-    border-color:var(--cyan);
-}
+input:focus{border-color:var(--cyan);}
 button{
     background:var(--cyan);
     border:none;
@@ -95,6 +91,12 @@ button{
 button:hover{
     transform:translateY(-2px);
     box-shadow:0 0 20px rgba(0,212,255,.4);
+}
+button:disabled{
+    opacity:.6;
+    cursor:wait;
+    transform:none;
+    box-shadow:none;
 }
 main{
     flex:1;
@@ -152,9 +154,7 @@ main{
     gap:18px;
     min-width:0;
 }
-.panel{
-    padding:18px;
-}
+.panel{padding:18px;}
 .panel h3{
     color:var(--cyan);
     margin-bottom:15px;
@@ -197,20 +197,14 @@ main{
     padding:12px;
 }
 .message{margin-bottom:12px;}
-.ai{
-    background:#111d33;
+.ai,.user{
     padding:10px;
     border-radius:8px;
     white-space:pre-wrap;
     overflow-wrap:anywhere;
 }
-.user{
-    background:rgba(0,212,255,.12);
-    padding:10px;
-    border-radius:8px;
-    white-space:pre-wrap;
-    overflow-wrap:anywhere;
-}
+.ai{background:#111d33;}
+.user{background:rgba(0,212,255,.12);}
 .chat-row{
     display:flex;
     gap:8px;
@@ -227,9 +221,7 @@ main{
         grid-template-columns:minmax(0,1fr);
         overflow:visible;
     }
-    .browser{
-        min-height:400px;
-    }
+    .browser{min-height:400px;}
 }
 @media(max-width:600px){
     header{
@@ -237,18 +229,10 @@ main{
         gap:12px;
         flex-wrap:wrap;
     }
-    .logo{
-        font-size:19px;
-    }
-    .toolbar{
-        padding:12px;
-    }
-    .toolbar button{
-        padding:0 12px;
-    }
-    main{
-        padding:12px;
-    }
+    .logo{font-size:19px;}
+    .toolbar{padding:12px;}
+    .toolbar button{padding:0 12px;}
+    main{padding:12px;}
 }
 </style>
 </head>
@@ -263,8 +247,8 @@ main{
 </header>
 
 <div class="toolbar">
-    <input id="urlInput" placeholder="Enter website URL...">
-    <button onclick="scanWebsite()">AI SCAN</button>
+    <input id="urlInput" placeholder="Enter website URL..." autocomplete="url">
+    <button id="scanButton" onclick="scanWebsite()">AI SCAN</button>
 </div>
 
 <main>
@@ -276,7 +260,7 @@ main{
             </div>
             <iframe
                 id="websiteFrame"
-                title="Website security preview"
+                title="Website preview"
                 sandbox="allow-scripts allow-forms"
                 referrerpolicy="no-referrer"
                 loading="lazy"
@@ -312,27 +296,19 @@ main{
             </div>
             <div class="chat-row">
                 <input id="chatInput" placeholder="Ask about the scan...">
-                <button onclick="sendChat()">Send</button>
+                <button id="sendButton" onclick="sendChat()">Send</button>
             </div>
         </div>
     </section>
 </main>
 
 <script>
-/*
-CyberOnline Portal
-
-Scores are based on consistent URL warning rules.
-This is not a live malware scanner or a full security audit.
-The AI assistant uses the existing /api/chat Netlify endpoint.
-*/
-
 const MODEL = "openai/gpt-oss-120b";
+
 let currentScan = null;
 let currentURL = "";
 let chatHistory = [];
 
-// URL helpers
 function normalizeURL(url){
     url = url.trim();
 
@@ -352,7 +328,6 @@ function getDomain(url){
     }
 }
 
-// Saved scan history
 function getScanHistory(){
     try{
         const history = JSON.parse(
@@ -369,7 +344,6 @@ function getScanHistory(){
 function saveScan(url,scan){
     let history = getScanHistory();
 
-    // Update the previous entry for this exact URL.
     history = history.filter(item => item.url !== url);
 
     history.unshift({
@@ -395,143 +369,6 @@ function saveScan(url,scan){
     }
 }
 
-// Consistent URL-based scoring
-function checkWebsite(url){
-    const site = new URL(url);
-    const host = site.hostname.toLowerCase();
-
-    let score = 0;
-    let flags = [];
-
-    function addRisk(points,message){
-        score += points;
-        flags.push(message);
-    }
-
-    // HTTP does not encrypt the connection.
-    if(site.protocol === "http:"){
-        addRisk(
-            25,
-            "The URL uses HTTP instead of HTTPS."
-        );
-    }
-
-    // Check for an IP address instead of a domain.
-    const isIPv4 =
-        /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
-
-    const isIPv6 = host.includes(":");
-
-    if(isIPv4 || isIPv6){
-        addRisk(
-            20,
-            "The URL uses an IP address instead of a regular domain name."
-        );
-    }
-
-    // Encoded internationalized domain names need careful inspection.
-    if(host.includes("xn--")){
-        addRisk(
-            25,
-            "The domain contains encoded international characters."
-        );
-    }
-
-    // Credentials embedded in a URL are a warning sign.
-    if(site.username || site.password){
-        addRisk(
-            30,
-            "The URL contains embedded username or password information."
-        );
-    }
-
-    // Nonstandard ports can deserve additional inspection.
-    if(site.port && site.port !== "80" && site.port !== "443"){
-        addRisk(
-            15,
-            "The URL uses a nonstandard web port."
-        );
-    }
-
-    // Words alone do not prove a site is malicious.
-    // They contribute only a limited warning score.
-    const suspiciousWords = [
-        "verify",
-        "password",
-        "signin",
-        "login",
-        "account",
-        "wallet",
-        "urgent",
-        "gift",
-        "free-prize"
-    ];
-
-    const fullURL = url.toLowerCase();
-    let foundWords = [];
-
-    suspiciousWords.forEach(word=>{
-        if(fullURL.includes(word)){
-            foundWords.push(word);
-        }
-    });
-
-    if(foundWords.length > 0){
-        addRisk(
-            Math.min(foundWords.length * 10,25),
-            "Potentially sensitive or deceptive terms found in URL: " +
-            foundWords.join(", ") + ". These terms are not proof of a threat."
-        );
-    }
-
-    if(host.length > 50){
-        addRisk(
-            10,
-            "The hostname is unusually long."
-        );
-    }
-
-    const parts = host.split(".");
-
-    if(parts.length > 5){
-        addRisk(
-            10,
-            "The domain has an unusually large number of subdomains."
-        );
-    }
-
-    score = Math.min(score,100);
-
-    let verdict;
-
-    if(score <= 20){
-        verdict = "Low Apparent URL Risk";
-    }
-    else if(score <= 50){
-        verdict = "Warning";
-    }
-    else{
-        verdict = "High Apparent URL Risk";
-    }
-
-    if(flags.length === 0){
-        flags.push(
-            "No warning signs were found by these basic URL checks."
-        );
-    }
-
-    return {
-        score:score,
-        verdict:verdict,
-        flags:flags,
-        summary:
-            "This score is based on basic URL characteristics. " +
-            "It is not a live malware scan or a full security audit. " +
-            "A low score does not prove that a website is safe."
-    };
-}
-
-// Website preview
 function loadWebsitePreview(url){
     const frame = document.getElementById("websiteFrame");
     const placeholder =
@@ -540,8 +377,7 @@ function loadWebsitePreview(url){
     try{
         const site = new URL(url);
 
-        if(site.protocol !== "https:" &&
-           site.protocol !== "http:"){
+        if(site.protocol !== "https:" && site.protocol !== "http:"){
             throw new Error("Invalid URL");
         }
 
@@ -553,12 +389,10 @@ function loadWebsitePreview(url){
         frame.removeAttribute("src");
         frame.style.display = "none";
         placeholder.style.display = "block";
-        placeholder.textContent =
-            "Please enter a valid website URL.";
+        placeholder.textContent = "Please enter a valid website URL.";
     }
 }
 
-// Chat display
 function addChat(type,text){
     const box = document.getElementById("chatBox");
     const message = document.createElement("div");
@@ -573,7 +407,6 @@ function addChat(type,text){
     box.scrollTop = box.scrollHeight;
 }
 
-// AI connection
 async function askAI(prompt){
     const response = await fetch("/api/chat",{
         method:"POST",
@@ -588,18 +421,20 @@ async function askAI(prompt){
                     content:`
 You are CyberOnline Portal, a cybersecurity assistant.
 
-Explain cybersecurity information clearly and honestly.
+Explain cybersecurity clearly and honestly.
 
-The website's score is calculated by fixed URL checks.
-Do not invent security checks, malware database results,
-confirmed vulnerabilities, or facts about a website.
+The scanner checks URLs against Google Safe Browsing's
+known threat lists and also evaluates basic URL indicators.
 
-Do not change the score supplied in the scan report.
-A low URL risk score does not prove that a website is safe.
+Never invent threat matches, scan results, vulnerabilities,
+or facts about a website. Never change the supplied score.
 
-Clearly explain that URL checks are limited and that no
-live threat database check is being performed by this system.
-Answer user questions briefly and accurately.
+A result with no known threat match does not guarantee safety.
+Explain the difference between a database match and proof
+that a website is safe.
+
+If a scan is unavailable, say so honestly.
+Keep answers concise and useful.
 `
                 },
                 ...chatHistory,
@@ -617,13 +452,13 @@ Answer user questions briefly and accurately.
     return data?.choices?.[0]?.message?.content || "";
 }
 
-// Website scan
-
 async function scanWebsite(){
-    let url = document.getElementById("urlInput").value.trim();
+    const input = document.getElementById("urlInput");
+    const button = document.getElementById("scanButton");
+    let url = input.value.trim();
 
     if(!url){
-        alert("Enter a website URL");
+        alert("Enter a website URL.");
         return;
     }
 
@@ -648,15 +483,20 @@ async function scanWebsite(){
     }
 
     currentURL = url;
+    currentScan = null;
+
     loadWebsitePreview(url);
 
+    button.disabled = true;
+    button.textContent = "SCANNING...";
+
     document.getElementById("statusText").textContent =
-        "Checking threats...";
+        "Checking threat lists...";
 
     document.getElementById("statusDot").style.background =
         "#ffcc00";
 
-    addChat("ai","Checking the URL against Google Safe Browsing...");
+    addChat("ai","Checking the URL against Google Safe Browsing.");
 
     try{
         const response = await fetch("/api/scan",{
@@ -669,17 +509,17 @@ async function scanWebsite(){
 
         if(!response.ok){
             throw new Error(
-                result.error || "Threat check failed."
+                result.error || "The scan could not be completed."
             );
         }
 
         currentScan = result;
 
-        displayReport(currentScan,url);
-        saveScan(url,currentScan);
+        displayReport(result,url);
+        saveScan(url,result);
 
         document.getElementById("statusText").textContent =
-            "Checks Complete";
+            "Scan Complete";
 
         document.getElementById("statusDot").style.background =
             "#00e5a0";
@@ -696,27 +536,30 @@ async function scanWebsite(){
 
         addChat(
             "ai",
-            "The scan could not be completed: " + error.message
+            "The scan could not be completed. " +
+            "Please try again later. Details: " + error.message
         );
+    }
+    finally{
+        button.disabled = false;
+        button.textContent = "AI SCAN";
     }
 }
 
-
-// Display report
 function displayReport(scan,url){
     const score = document.getElementById("riskScore");
 
     score.textContent = scan.score + "/100";
     score.className = "score";
 
-    if(scan.score <= 20){
-        score.classList.add("safe");
+    if(scan.score >= 51){
+        score.classList.add("danger");
     }
-    else if(scan.score <= 50){
+    else if(scan.score > 0){
         score.classList.add("warning");
     }
     else{
-        score.classList.add("danger");
+        score.classList.add("safe");
     }
 
     document.getElementById("verdict").textContent =
@@ -731,22 +574,22 @@ function displayReport(scan,url){
     scan.flags.forEach(flag=>{
         const item = document.createElement("div");
         item.className = "flag";
-        item.textContent = "⚠ " + flag;
+        item.textContent = "• " + flag;
         flags.appendChild(item);
     });
 
     addChat(
         "ai",
-        "URL CHECK REPORT\n\n" +
+        "URL SECURITY REPORT\n\n" +
         "Domain: " + getDomain(url) + "\n" +
         "Score: " + scan.score + "/100\n" +
-        "Verdict: " + scan.verdict + "\n\n" +
+        "Verdict: " + scan.verdict + "\n" +
+        "Source: " + (scan.source || "URL checks") + "\n\n" +
         "Findings:\n- " + scan.flags.join("\n- ") + "\n\n" +
         scan.summary
     );
 }
 
-// View saved scans
 function showHistory(){
     const history = getScanHistory();
 
@@ -769,9 +612,9 @@ function showHistory(){
     addChat("ai",result);
 }
 
-// AI Assistant
 async function sendChat(){
     const input = document.getElementById("chatInput");
+    const button = document.getElementById("sendButton");
     const message = input.value.trim();
 
     if(!message) return;
@@ -804,18 +647,29 @@ async function sendChat(){
         "User question: " + message +
         "\nAnswer briefly.";
 
+    button.disabled = true;
+
     try{
         const answer = await askAI(prompt);
 
         addChat("ai",answer || "No response was returned.");
+
+        chatHistory.push(
+            {role:"user",content:prompt},
+            {role:"assistant",content:answer}
+        );
+
+        chatHistory = chatHistory.slice(-10);
     }
     catch(error){
         console.error(error);
         addChat("ai","AI unavailable. Check your backend connection.");
     }
+    finally{
+        button.disabled = false;
+    }
 }
 
-// Enter key shortcuts
 document.getElementById("urlInput").addEventListener(
     "keydown",
     function(e){
