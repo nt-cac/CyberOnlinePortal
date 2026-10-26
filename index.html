@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -77,7 +78,7 @@ input{
     font-size:15px;
     outline:none;
 }
-input:focus{border-color:var(--cyan);}
+input:focus{border-color:var(--cyan)}
 button{
     background:var(--cyan);
     border:none;
@@ -93,10 +94,17 @@ button:hover{
     box-shadow:0 0 20px rgba(0,212,255,.4);
 }
 button:disabled{
-    opacity:.6;
+    opacity:.55;
     cursor:wait;
     transform:none;
-    box-shadow:none;
+}
+.notice{
+    padding:9px 18px;
+    background:#0a1323;
+    color:var(--muted);
+    font-size:12px;
+    border-bottom:1px solid var(--border);
+    line-height:1.5;
 }
 main{
     flex:1;
@@ -154,7 +162,7 @@ main{
     gap:18px;
     min-width:0;
 }
-.panel{padding:18px;}
+.panel{padding:18px}
 .panel h3{
     color:var(--cyan);
     margin-bottom:15px;
@@ -165,9 +173,9 @@ main{
     font-weight:800;
     margin:15px;
 }
-.safe{color:var(--green);}
-.warning{color:var(--yellow);}
-.danger{color:var(--red);}
+.safe{color:var(--green)}
+.warning{color:var(--yellow)}
+.danger{color:var(--red)}
 .metric{
     display:flex;
     justify-content:space-between;
@@ -188,29 +196,32 @@ main{
     margin-top:8px;
     font-size:13px;
     overflow-wrap:anywhere;
+    line-height:1.5;
 }
+.flag a{color:var(--cyan)}
 .chat-box{
-    height:220px;
+    height:260px;
     overflow:auto;
     background:#080f1c;
     border-radius:10px;
     padding:12px;
 }
-.message{margin-bottom:12px;}
+.message{margin-bottom:12px}
 .ai,.user{
     padding:10px;
     border-radius:8px;
     white-space:pre-wrap;
     overflow-wrap:anywhere;
+    line-height:1.5;
 }
-.ai{background:#111d33;}
-.user{background:rgba(0,212,255,.12);}
+.ai{background:#111d33}
+.user{background:rgba(0,212,255,.12)}
 .chat-row{
     display:flex;
     gap:8px;
     margin-top:10px;
 }
-.chat-row button{padding:0 15px;}
+.chat-row button{padding:0 15px}
 .history-button{
     width:100%;
     padding:12px;
@@ -221,7 +232,7 @@ main{
         grid-template-columns:minmax(0,1fr);
         overflow:visible;
     }
-    .browser{min-height:400px;}
+    .browser{min-height:400px}
 }
 @media(max-width:600px){
     header{
@@ -229,10 +240,10 @@ main{
         gap:12px;
         flex-wrap:wrap;
     }
-    .logo{font-size:19px;}
-    .toolbar{padding:12px;}
-    .toolbar button{padding:0 12px;}
-    main{padding:12px;}
+    .logo{font-size:19px}
+    .toolbar{padding:12px}
+    .toolbar button{padding:0 12px}
+    main{padding:12px}
 }
 </style>
 </head>
@@ -247,8 +258,14 @@ main{
 </header>
 
 <div class="toolbar">
-    <input id="urlInput" placeholder="Enter website URL..." autocomplete="url">
+    <input id="urlInput" placeholder="Enter website URL...">
     <button id="scanButton" onclick="scanWebsite()">AI SCAN</button>
+</div>
+
+<div class="notice">
+    Threat checks use Google Safe Browsing. Scores represent detected
+    risk indicators, not the probability that a site is malicious.
+    No known threat match does not guarantee safety.
 </div>
 
 <main>
@@ -260,7 +277,7 @@ main{
             </div>
             <iframe
                 id="websiteFrame"
-                title="Website preview"
+                title="Website security preview"
                 sandbox="allow-scripts allow-forms"
                 referrerpolicy="no-referrer"
                 loading="lazy"
@@ -273,14 +290,17 @@ main{
         <div class="card panel">
             <h3>Security Report</h3>
             <div id="riskScore" class="score">--</div>
+
             <div class="metric">
                 <span>Verdict</span>
                 <span id="verdict" class="value">Waiting</span>
             </div>
+
             <div class="metric">
                 <span>Domain</span>
                 <span id="domain" class="value">--</span>
             </div>
+
             <div id="flags"></div>
             <button class="history-button" onclick="showHistory()">
                 VIEW SCAN HISTORY
@@ -291,12 +311,15 @@ main{
             <h3>AI Assistant</h3>
             <div id="chatBox" class="chat-box">
                 <div class="message">
-                    <div class="ai">Enter a website URL to begin analysis.</div>
+                    <div class="ai">
+                        Enter a website URL to begin analysis.
+                    </div>
                 </div>
             </div>
+
             <div class="chat-row">
                 <input id="chatInput" placeholder="Ask about the scan...">
-                <button id="sendButton" onclick="sendChat()">Send</button>
+                <button onclick="sendChat()">Send</button>
             </div>
         </div>
     </section>
@@ -308,6 +331,183 @@ const MODEL = "openai/gpt-oss-120b";
 let currentScan = null;
 let currentURL = "";
 let chatHistory = [];
+
+/*
+    Recognized website profiles.
+
+    Historical details are included only where known.
+    Recognition is not proof that a website is safe.
+*/
+const siteProfiles = {
+    "youtube.com":{
+        name:"YouTube",
+        description:"A video-sharing platform where people watch, upload, and share videos.",
+        history:"YouTube was founded in 2005. Its first video, 'Me at the zoo,' was uploaded in April 2005. Google acquired YouTube in 2006.",
+        reputation:"YouTube is a widely established and reputable online service.",
+        risks:"Individual videos, links in descriptions, comments, advertisements, and user accounts can still expose visitors to scams or harmful content."
+    },
+    "google.com":{
+        name:"Google",
+        description:"A technology company known for its search engine and online services.",
+        history:"Google was founded in 1998 by Larry Page and Sergey Brin.",
+        reputation:"Google is a widely established technology company.",
+        risks:"Search results, third-party websites, advertisements, and account-related scams can still present risks."
+    },
+    "wikipedia.org":{
+        name:"Wikipedia",
+        description:"A collaborative online encyclopedia written and maintained by volunteers.",
+        history:"Wikipedia launched in January 2001.",
+        reputation:"Wikipedia is a widely used reference resource.",
+        risks:"Articles can change, and external links should be evaluated separately."
+    },
+    "microsoft.com":{
+        name:"Microsoft",
+        description:"A technology company known for Windows, Microsoft 365, Azure, and other software and services.",
+        history:"Microsoft was founded in 1975 by Bill Gates and Paul Allen.",
+        reputation:"Microsoft is a widely established technology company.",
+        risks:"Impersonation websites and fake technical-support messages can still exploit the Microsoft name."
+    },
+    "apple.com":{
+        name:"Apple",
+        description:"A technology company known for the iPhone, Mac, and its software and services.",
+        history:"Apple was founded in 1976.",
+        reputation:"Apple is a widely established technology company.",
+        risks:"Fake support pages, payment requests, and lookalike domains can still pose risks."
+    },
+    "github.com":{
+        name:"GitHub",
+        description:"A platform for hosting code, collaborating on software projects, and managing development workflows.",
+        history:"GitHub launched in 2008.",
+        reputation:"GitHub is a widely used software-development platform.",
+        risks:"Public repositories can contain unsafe code, malicious projects, or deceptive links."
+    },
+    "amazon.com":{
+        name:"Amazon",
+        description:"An e-commerce and technology company offering online shopping and cloud-computing services.",
+        history:"Amazon began as an online bookstore in 1995.",
+        reputation:"Amazon is a widely established e-commerce and technology company.",
+        risks:"Counterfeit listings, impersonation pages, and fraudulent messages can still occur."
+    },
+    "mozilla.org":{
+        name:"Mozilla",
+        description:"An organization known for supporting an open internet and developing Firefox.",
+        history:"The Mozilla project began in 1998. Firefox was first released in 2004.",
+        reputation:"Mozilla is a well-established organization in web technology.",
+        risks:"Downloads and links should still be checked to ensure they lead to the intended destination."
+    },
+    "microsoftonline.com":{
+        name:"Microsoft Online",
+        description:"A domain associated with Microsoft's online sign-in and productivity services.",
+        history:"",
+        reputation:"This domain is associated with Microsoft's online services.",
+        risks:"Always verify the full domain before entering account credentials."
+    },
+    "cloudflare.com":{
+        name:"Cloudflare",
+        description:"A company providing web infrastructure, content delivery, and security services.",
+        history:"Cloudflare was founded in 2009.",
+        reputation:"Cloudflare is a widely established web infrastructure company.",
+        risks:"A website using Cloudflare is not automatically safe; the service also supports websites owned by third parties."
+    },
+    "openai.com":{
+        name:"OpenAI",
+        description:"An artificial intelligence research and product company.",
+        history:"OpenAI was founded in 2015.",
+        reputation:"OpenAI is an established AI company.",
+        risks:"Impersonation websites and fake AI services can still present risks."
+    },
+    "linkedin.com":{
+        name:"LinkedIn",
+        description:"A professional networking platform for careers, hiring, and workplace connections.",
+        history:"LinkedIn launched in 2003.",
+        reputation:"LinkedIn is a widely established professional networking service.",
+        risks:"Fake job offers, impersonation accounts, and phishing messages can still occur."
+    },
+    "reddit.com":{
+        name:"Reddit",
+        description:"An online platform organized around communities and discussions.",
+        history:"Reddit launched in 2005.",
+        reputation:"Reddit is a widely established discussion platform.",
+        risks:"User-generated posts, comments, and external links may contain misleading or unsafe material."
+    },
+    "netflix.com":{
+        name:"Netflix",
+        description:"A subscription streaming service for films, television, and other entertainment.",
+        history:"Netflix was founded in 1997 and launched its streaming service in 2007.",
+        reputation:"Netflix is a widely established streaming service.",
+        risks:"Fake subscription notices and payment pages can still be used in scams."
+    },
+    "paypal.com":{
+        name:"PayPal",
+        description:"An online payment service.",
+        history:"PayPal was founded in the late 1990s.",
+        reputation:"PayPal is a widely established online payment service.",
+        risks:"Payment-related impersonation and phishing messages remain important risks."
+    },
+    "espn.com":{
+        name:"ESPN",
+        description:"A sports media company providing sports news, scores, and video coverage.",
+        history:"ESPN launched in 1979.",
+        reputation:"ESPN is a widely established sports media service.",
+        risks:"Impersonation pages and deceptive streaming links can still pose risks."
+    },
+    "nfl.com":{
+        name:"NFL",
+        description:"The official website of the National Football League, providing league news, scores, and information.",
+        history:"The NFL was founded in 1920.",
+        reputation:"The NFL is a major established professional sports league.",
+        risks:"Fake ticket sales, merchandise stores, and impersonation pages can still occur."
+    },
+    "detroitlions.com":{
+        name:"Detroit Lions",
+        description:"The official website of the Detroit Lions professional football team.",
+        history:"The franchise began in 1930 and became the Detroit Lions in 1934.",
+        reputation:"This is the recognized domain for the Detroit Lions' official website.",
+        risks:"Be cautious of impersonation accounts, fraudulent ticket sellers, and unofficial payment requests."
+    }
+};
+
+const reputableDomains = [
+    "google.com",
+    "youtube.com",
+    "microsoft.com",
+    "apple.com",
+    "amazon.com",
+    "wikipedia.org",
+    "github.com",
+    "cloudflare.com",
+    "mozilla.org",
+    "adobe.com",
+    "ibm.com",
+    "intel.com",
+    "nvidia.com",
+    "amd.com",
+    "cisco.com",
+    "salesforce.com",
+    "oracle.com",
+    "zoom.us",
+    "dropbox.com",
+    "paypal.com",
+    "netflix.com",
+    "linkedin.com",
+    "reddit.com",
+    "stackoverflow.com",
+    "openai.com",
+    "mit.edu",
+    "stanford.edu",
+    "harvard.edu",
+    "usa.gov",
+    "irs.gov",
+    "michigan.gov",
+    "nytimes.com",
+    "bbc.com",
+    "reuters.com",
+    "apnews.com",
+    "espn.com",
+    "nfl.com",
+    "detroitlions.com",
+    "microsoftonline.com"
+];
 
 function normalizeURL(url){
     url = url.trim();
@@ -321,13 +521,52 @@ function normalizeURL(url){
 
 function getDomain(url){
     try{
-        return new URL(normalizeURL(url)).hostname;
-    }
-    catch{
+        return new URL(normalizeURL(url)).hostname.toLowerCase();
+    }catch{
         return "Unknown";
     }
 }
 
+function getSiteProfile(url){
+    const host = getDomain(url);
+
+    for(const domain in siteProfiles){
+        if(host === domain || host.endsWith("." + domain)){
+            return siteProfiles[domain];
+        }
+    }
+
+    return null;
+}
+
+function getDomainReputation(url){
+    const host = getDomain(url);
+
+    if(host === "Unknown"){
+        return {
+            recognized:false,
+            description:"The domain could not be identified."
+        };
+    }
+
+    const recognized = reputableDomains.some(function(domain){
+        return host === domain || host.endsWith("." + domain);
+    });
+
+    if(recognized){
+        return {
+            recognized:true,
+            description:"The domain matches a widely established service in the built-in recognition list. This is reputation context, not proof of safety."
+        };
+    }
+
+    return {
+        recognized:false,
+        description:"The domain is not in the built-in list of established services. That does not mean it is dangerous."
+    };
+}
+
+/* Preserve scan history in the browser. */
 function getScanHistory(){
     try{
         const history = JSON.parse(
@@ -335,16 +574,15 @@ function getScanHistory(){
         );
 
         return Array.isArray(history) ? history : [];
-    }
-    catch{
+    }catch{
         return [];
     }
 }
 
 function saveScan(url,scan){
-    let history = getScanHistory();
-
-    history = history.filter(item => item.url !== url);
+    let history = getScanHistory().filter(function(item){
+        return item.url !== url;
+    });
 
     history.unshift({
         url:url,
@@ -353,6 +591,7 @@ function saveScan(url,scan){
         verdict:scan.verdict,
         flags:scan.flags,
         summary:scan.summary,
+        source:scan.source,
         date:new Date().toISOString()
     });
 
@@ -363,16 +602,14 @@ function saveScan(url,scan){
             "cyberScanHistory",
             JSON.stringify(history)
         );
-    }
-    catch(error){
+    }catch(error){
         console.warn("Scan history could not be saved.");
     }
 }
 
 function loadWebsitePreview(url){
     const frame = document.getElementById("websiteFrame");
-    const placeholder =
-        document.getElementById("browserPlaceholder");
+    const placeholder = document.getElementById("browserPlaceholder");
 
     try{
         const site = new URL(url);
@@ -384,8 +621,7 @@ function loadWebsitePreview(url){
         frame.src = site.href;
         frame.style.display = "block";
         placeholder.style.display = "none";
-    }
-    catch(error){
+    }catch(error){
         frame.removeAttribute("src");
         frame.style.display = "none";
         placeholder.style.display = "block";
@@ -407,6 +643,15 @@ function addChat(type,text){
     box.scrollTop = box.scrollHeight;
 }
 
+function rememberChat(role,content){
+    chatHistory.push({
+        role:role,
+        content:content
+    });
+
+    chatHistory = chatHistory.slice(-12);
+}
+
 async function askAI(prompt){
     const response = await fetch("/api/chat",{
         method:"POST",
@@ -414,27 +659,64 @@ async function askAI(prompt){
         body:JSON.stringify({
             model:MODEL,
             temperature:0,
-            max_tokens:700,
+            max_tokens:900,
             messages:[
                 {
                     role:"system",
                     content:`
-You are CyberOnline Portal, a cybersecurity assistant.
+You are CyberOnline Portal's cybersecurity assistant.
 
-Explain cybersecurity clearly and honestly.
+Give useful, direct, balanced website assessments.
 
-The scanner checks URLs against Google Safe Browsing's
-known threat lists and also evaluates basic URL indicators.
+IMPORTANT RULES:
 
-Never invent threat matches, scan results, vulnerabilities,
-or facts about a website. Never change the supplied score.
+1. Answer the user's actual question first.
 
-A result with no known threat match does not guarantee safety.
-Explain the difference between a database match and proof
-that a website is safe.
+2. If a recognized reputable website has no known threat match
+in the current scan, say directly that it is generally considered
+reputable based on its established identity and the available scan.
+Do not answer only "I can't confirm if it is safe."
 
-If a scan is unavailable, say so honestly.
-Keep answers concise and useful.
+3. Use supplied website profile information to explain what the
+website does and, when relevant, its history. Include history only
+when it is supplied and useful. Never invent historical details.
+
+4. Clearly explain that the scan returned no known threat match.
+Do not claim that this proves the entire website is safe.
+
+5. For reputable platforms, mention relevant real-world risks:
+user-generated content, external links, impersonation, scams,
+malicious ads, or compromised accounts, where applicable.
+
+6. A recognized domain is not automatically safe in every
+circumstance. A reputable website may be compromised, and
+individual subdomains or pages may have different risks.
+
+7. For unfamiliar domains, do not assume danger just because
+the domain is not on the recognition list. Explain the actual
+findings and the limits of the available evidence.
+
+8. If Google Safe Browsing reports a known threat match, give
+a clear warning even if the domain is recognized as reputable.
+
+9. Never invent scan results, reputation checks, security audits,
+or claims that you personally visited or investigated a website.
+
+10. Never change the supplied score or verdict.
+
+11. Keep the answer conversational, informative, and reasonably
+concise. Do not repeatedly use vague disclaimers instead of
+answering the question.
+
+EXAMPLE:
+If YouTube's current scan reports no known threat match, explain
+that YouTube is a widely established video-sharing platform,
+founded in 2005 and acquired by Google in 2006. State that the
+scan returned no known threat match, while explaining that
+individual videos, external links, ads, and accounts can still
+present risks.
+
+Only use that conclusion when the supplied scan results support it.
 `
                 },
                 ...chatHistory,
@@ -452,13 +734,170 @@ Keep answers concise and useful.
     return data?.choices?.[0]?.message?.content || "";
 }
 
+/*
+    Adjust weak URL heuristics for the report.
+    Confirmed threat matches are never downgraded.
+*/
+function improveScore(scan,url){
+    const result = {
+        ...scan,
+        flags:Array.isArray(scan.flags) ? [...scan.flags] : []
+    };
+
+    const verdictText = String(result.verdict || "").toLowerCase();
+    const flagText = result.flags.join(" ").toLowerCase();
+
+    const confirmedThreat =
+        result.threatDetected === true ||
+        verdictText.includes("known threat detected") ||
+        Number(result.score) >= 100;
+
+    if(confirmedThreat){
+        result.score = 100;
+        result.verdict = "Known Threat Detected";
+        result.threatDetected = true;
+
+        if(!result.flags.length){
+            result.flags.push(
+                "Google Safe Browsing reported a known threat match."
+            );
+        }
+
+        result.summary =
+            result.summary ||
+            "Google Safe Browsing reported a known threat match. Avoid interacting with this URL.";
+
+        return result;
+    }
+
+    const reputation = getDomainReputation(url);
+    let score = 0;
+    const improvedFlags = [];
+
+    if(flagText.includes("ip address")){
+        score += 15;
+        improvedFlags.push(
+            "The URL uses an IP address instead of a regular domain name. This deserves inspection but is not proof of malicious activity."
+        );
+    }
+
+    if(
+        flagText.includes("encoded international characters") ||
+        flagText.includes("xn--")
+    ){
+        score += 12;
+        improvedFlags.push(
+            "The domain uses encoded international characters. Check for lookalike characters."
+        );
+    }
+
+    if(flagText.includes("nonstandard web port")){
+        score += 8;
+        improvedFlags.push(
+            "The URL uses a nonstandard port. This can be legitimate but deserves context."
+        );
+    }
+
+    if(flagText.includes("hostname is unusually long")){
+        score += 5;
+        improvedFlags.push(
+            "The hostname is unusually long. Length alone does not establish a threat."
+        );
+    }
+
+    if(flagText.includes("large number of subdomains")){
+        score += 5;
+        improvedFlags.push(
+            "The domain has many subdomains. This can be legitimate, but merits context."
+        );
+    }
+
+    if(flagText.includes("uses http instead of https")){
+        improvedFlags.push(
+            "The URL uses HTTP instead of HTTPS. This lacks HTTPS connection protection, but HTTP alone does not prove the site is malicious."
+        );
+    }
+
+    if(
+        flagText.includes("sensitive or deceptive terms") ||
+        flagText.includes("potentially sensitive") ||
+        flagText.includes("deceptive terms")
+    ){
+        improvedFlags.push(
+            "Words such as login, verify, and account can appear on legitimate websites, so these words alone were not counted as risk points."
+        );
+    }
+
+    if(reputation.recognized){
+        score = Math.min(score,5);
+
+        result.flags = [
+            "Google Safe Browsing returned no known threat match.",
+            reputation.description
+        ];
+
+        if(improvedFlags.length){
+            result.flags.push(
+                "Minor URL indicators were reviewed but were not treated as proof of danger."
+            );
+        }
+
+        result.score = score;
+        result.verdict = "No Known Threats Detected";
+        result.summary =
+            "Google Safe Browsing returned no known threat match. This domain matches a recognized established service. Neither result guarantees that every page, account, or link is safe.";
+
+        return result;
+    }
+
+    if(score === 0){
+        score = 10;
+
+        result.verdict = "Can't Confirm";
+
+        improvedFlags.unshift(
+            "Google Safe Browsing returned no known threat match."
+        );
+
+        improvedFlags.push(
+            "This domain is not in the built-in recognition list. That is not evidence that it is malicious; there is limited reputation context in this scan."
+        );
+    }else{
+        score = Math.min(score,40);
+
+        if(score <= 15){
+            result.verdict = "Can't Confirm";
+        }else if(score <= 25){
+            result.verdict = "Low URL Risk Indicators";
+        }else{
+            result.verdict = "Warning";
+        }
+
+        improvedFlags.unshift(
+            "Google Safe Browsing returned no known threat match."
+        );
+
+        improvedFlags.push(
+            "The score reflects URL characteristics only. These indicators cannot establish that a site is malicious."
+        );
+    }
+
+    result.score = score;
+    result.flags = improvedFlags;
+
+    result.summary =
+        score === 10
+        ? "No known threat match was returned, and the URL checks did not identify strong warning indicators. The domain has limited reputation context in this scanner, so its safety cannot be established from this result alone."
+        : "Google Safe Browsing returned no known threat match, but some URL characteristics deserve inspection. These characteristics can appear on legitimate websites as well.";
+
+    return result;
+}
+
 async function scanWebsite(){
-    const input = document.getElementById("urlInput");
-    const button = document.getElementById("scanButton");
-    let url = input.value.trim();
+    let url = document.getElementById("urlInput").value.trim();
 
     if(!url){
-        alert("Enter a website URL.");
+        alert("Enter a website URL");
         return;
     }
 
@@ -468,35 +907,28 @@ async function scanWebsite(){
         const parsed = new URL(url);
 
         if(
-            (parsed.protocol !== "https:" &&
-             parsed.protocol !== "http:") ||
+            (parsed.protocol !== "https:" && parsed.protocol !== "http:") ||
             !parsed.hostname.includes(".") ||
             parsed.username ||
             parsed.password
         ){
             throw new Error("Invalid URL");
         }
-    }
-    catch{
+    }catch{
         alert("Enter a valid website URL.");
         return;
     }
 
     currentURL = url;
-    currentScan = null;
-
     loadWebsitePreview(url);
 
-    button.disabled = true;
-    button.textContent = "SCANNING...";
+    document.getElementById("scanButton").disabled = true;
+    document.getElementById("statusText").textContent = "Checking threats...";
+    document.getElementById("statusDot").style.background = "#ffcc00";
+    document.getElementById("riskScore").textContent = "...";
+    document.getElementById("verdict").textContent = "Scanning";
 
-    document.getElementById("statusText").textContent =
-        "Checking threat lists...";
-
-    document.getElementById("statusDot").style.background =
-        "#ffcc00";
-
-    addChat("ai","Checking the URL against Google Safe Browsing.");
+    addChat("ai","Checking the URL against Google Safe Browsing...");
 
     try{
         const response = await fetch("/api/scan",{
@@ -508,86 +940,113 @@ async function scanWebsite(){
         const result = await response.json();
 
         if(!response.ok){
-            throw new Error(
-                result.error || "The scan could not be completed."
-            );
+            throw new Error(result.error || "Threat check failed.");
         }
 
-        currentScan = result;
+        currentScan = improveScore(result,url);
 
-        displayReport(result,url);
-        saveScan(url,result);
+        displayReport(currentScan,url);
+        saveScan(url,currentScan);
 
-        document.getElementById("statusText").textContent =
-            "Scan Complete";
+        document.getElementById("statusText").textContent = "Checks Complete";
+        document.getElementById("statusDot").style.background = "#00e5a0";
 
-        document.getElementById("statusDot").style.background =
-            "#00e5a0";
-
-    }
-    catch(error){
+    }catch(error){
         console.error(error);
 
-        document.getElementById("statusText").textContent =
-            "Scan Unavailable";
+        document.getElementById("statusText").textContent = "Scan Unavailable";
+        document.getElementById("statusDot").style.background = "#ff4768";
+        document.getElementById("verdict").textContent = "Scan Unavailable";
+        document.getElementById("riskScore").textContent = "--";
 
-        document.getElementById("statusDot").style.background =
-            "#ff4768";
-
-        addChat(
-            "ai",
-            "The scan could not be completed. " +
-            "Please try again later. Details: " + error.message
-        );
-    }
-    finally{
-        button.disabled = false;
-        button.textContent = "AI SCAN";
+        addChat("ai","The scan could not be completed: " + error.message);
+    }finally{
+        document.getElementById("scanButton").disabled = false;
     }
 }
 
 function displayReport(scan,url){
-    const score = document.getElementById("riskScore");
+    const scoreElement = document.getElementById("riskScore");
+    const score = Number(scan.score) || 0;
 
-    score.textContent = scan.score + "/100";
-    score.className = "score";
+    scoreElement.textContent = score + "/100";
+    scoreElement.className = "score";
 
-    if(scan.score >= 51){
-        score.classList.add("danger");
+    if(
+        scan.threatDetected ||
+        scan.verdict === "Known Threat Detected" ||
+        score > 25
+    ){
+        scoreElement.classList.add("danger");
+    }else if(score > 5 || scan.verdict === "Can't Confirm"){
+        scoreElement.classList.add("warning");
+    }else{
+        scoreElement.classList.add("safe");
     }
-    else if(scan.score > 0){
-        score.classList.add("warning");
-    }
-    else{
-        score.classList.add("safe");
-    }
 
-    document.getElementById("verdict").textContent =
-        scan.verdict;
+    document.getElementById("verdict").textContent = scan.verdict;
+    document.getElementById("domain").textContent = getDomain(url);
 
-    document.getElementById("domain").textContent =
-        getDomain(url);
+    const flagsContainer = document.getElementById("flags");
+    flagsContainer.innerHTML = "";
 
-    const flags = document.getElementById("flags");
-    flags.innerHTML = "";
-
-    scan.flags.forEach(flag=>{
+    (scan.flags || []).forEach(function(flag){
         const item = document.createElement("div");
         item.className = "flag";
         item.textContent = "• " + flag;
-        flags.appendChild(item);
+        flagsContainer.appendChild(item);
     });
 
-    addChat(
-        "ai",
-        "URL SECURITY REPORT\n\n" +
+    if(
+        scan.threatDetected ||
+        scan.verdict === "Known Threat Detected"
+    ){
+        const attribution = document.createElement("div");
+        attribution.className = "flag";
+        attribution.textContent = "Advisory provided by Google. ";
+
+        const link = document.createElement("a");
+        link.href = "https://developers.google.com/search/docs/monitor-debug/security/social-engineering";
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = "Learn about this warning";
+
+        attribution.appendChild(link);
+        flagsContainer.appendChild(attribution);
+    }
+
+    const reputation = getDomainReputation(url);
+    const profile = getSiteProfile(url);
+
+    let report =
+        "URL CHECK REPORT\n\n" +
+        "Website: " + (profile ? profile.name : getDomain(url)) + "\n" +
         "Domain: " + getDomain(url) + "\n" +
-        "Score: " + scan.score + "/100\n" +
+        "Risk score: " + score + "/100\n" +
         "Verdict: " + scan.verdict + "\n" +
-        "Source: " + (scan.source || "URL checks") + "\n\n" +
-        "Findings:\n- " + scan.flags.join("\n- ") + "\n\n" +
-        scan.summary
-    );
+        "Established domain recognized: " +
+        (reputation.recognized ? "Yes" : "Not in the built-in list") +
+        "\n\nFindings:\n- " +
+        (scan.flags || []).join("\n- ") +
+        "\n\n" + (scan.summary || "");
+
+    if(profile){
+        report +=
+            "\n\nWEBSITE BACKGROUND\n" +
+            "Name: " + profile.name + "\n" +
+            "About: " + profile.description + "\n" +
+            (profile.history ? "History: " + profile.history + "\n" : "") +
+            "Reputation context: " + profile.reputation + "\n" +
+            "Potential risks: " + profile.risks;
+    }else{
+        report +=
+            "\n\nWEBSITE BACKGROUND\n" +
+            "No background profile is stored for this domain. " +
+            "This does not mean the website is dangerous.";
+    }
+
+    addChat("ai",report);
+    rememberChat("assistant",report);
 }
 
 function showHistory(){
@@ -600,9 +1059,9 @@ function showHistory(){
 
     let result = "SAVED SCAN HISTORY\n\n";
 
-    history.forEach((scan,index)=>{
+    history.forEach(function(scan,index){
         result +=
-            (index + 1) + ". " + scan.domain + "\n" +
+            (index+1) + ". " + scan.domain + "\n" +
             "Score: " + scan.score + "/100\n" +
             "Verdict: " + scan.verdict + "\n" +
             "Date: " + new Date(scan.date).toLocaleString() +
@@ -610,17 +1069,18 @@ function showHistory(){
     });
 
     addChat("ai",result);
+    rememberChat("assistant",result);
 }
 
 async function sendChat(){
     const input = document.getElementById("chatInput");
-    const button = document.getElementById("sendButton");
     const message = input.value.trim();
 
     if(!message) return;
 
     input.value = "";
     addChat("user",message);
+    rememberChat("user",message);
 
     const lowerMessage = message.toLowerCase();
 
@@ -637,56 +1097,50 @@ async function sendChat(){
     let context = "";
 
     if(currentScan){
+        const reputation = getDomainReputation(currentURL);
+        const profile = getSiteProfile(currentURL);
+
         context =
             "Current scan URL: " + currentURL + "\n" +
-            "Current scan report: " +
-            JSON.stringify(currentScan) + "\n";
+            "Domain reputation context: " + reputation.description + "\n" +
+            "Recognized reputable domain: " +
+            (reputation.recognized ? "Yes" : "Not in the built-in list") + "\n" +
+            "Known website background: " +
+            (profile
+                ? JSON.stringify(profile)
+                : "No verified background profile is stored for this domain.") + "\n" +
+            "Current scan report: " + JSON.stringify(currentScan) + "\n";
     }
-
-    const prompt = context +
-        "User question: " + message +
-        "\nAnswer briefly.";
-
-    button.disabled = true;
 
     try{
-        const answer = await askAI(prompt);
-
-        addChat("ai",answer || "No response was returned.");
-
-        chatHistory.push(
-            {role:"user",content:prompt},
-            {role:"assistant",content:answer}
+        const answer = await askAI(
+            context +
+            "User question: " + message +
+            "\nAnswer directly and clearly. Use the supplied website profile when relevant."
         );
 
-        chatHistory = chatHistory.slice(-10);
-    }
-    catch(error){
+        const finalAnswer = answer || "No response was returned.";
+
+        addChat("ai",finalAnswer);
+        rememberChat("assistant",finalAnswer);
+
+    }catch(error){
         console.error(error);
         addChat("ai","AI unavailable. Check your backend connection.");
     }
-    finally{
-        button.disabled = false;
-    }
 }
 
-document.getElementById("urlInput").addEventListener(
-    "keydown",
-    function(e){
-        if(e.key === "Enter"){
-            scanWebsite();
-        }
+document.getElementById("urlInput").addEventListener("keydown",function(event){
+    if(event.key === "Enter"){
+        scanWebsite();
     }
-);
+});
 
-document.getElementById("chatInput").addEventListener(
-    "keydown",
-    function(e){
-        if(e.key === "Enter"){
-            sendChat();
-        }
+document.getElementById("chatInput").addEventListener("keydown",function(event){
+    if(event.key === "Enter"){
+        sendChat();
     }
-);
+});
 </script>
 </body>
 </html>
