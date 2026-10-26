@@ -10,3 +10,8 @@
   to = "/.netlify/functions/chat"
   status = 200
 
+[[redirects]]
+  from = "/api/scan"
+  to = "/.netlify/functions/scan"
+  status = 200
+
