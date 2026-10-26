@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CyberOnline Portal</title>
+
+<style>
+:root{
+    --bg:#050914;
+    --panel:#0d1526;
+    --panel-light:#111d33;
+    --cyan:#00d4ff;
+    --green:#00e5a0;
+    --yellow:#ffcc00;
+    --red:#ff4768;
+    --text:#edf5ff;
+    --muted:#8292ad;
+    --border:rgba(0,212,255,.18);
+}
+*{
+    box-sizing:border-box;
+    margin:0;
+    padding:0;
+    font-family:"Segoe UI",Inter,Arial,sans-serif;
+}
+body{
+    height:100vh;
+    background:radial-gradient(circle at top right,#11294a,#050914 45%);
+    color:var(--text);
+    display:flex;
+    flex-direction:column;
+}
+header{
+    height:70px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 25px;
+    background:rgba(13,21,38,.9);
+    border-bottom:1px solid var(--border);
+}
+.logo{
+    font-size:24px;
+    font-weight:800;
+    color:var(--cyan);
+    letter-spacing:1px;
+}
+.status{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    color:var(--muted);
+}
+.status-dot{
+    height:12px;
+    width:12px;
+    border-radius:50%;
+    background:var(--green);
+    box-shadow:0 0 15px var(--green);
+}
+.toolbar{
+    display:flex;
+    gap:12px;
+    padding:18px;
+    background:#080f1e;
+    border-bottom:1px solid var(--border);
+}
+input{
+    flex:1;
+    background:#111c32;
+    border:1px solid var(--border);
+    color:white;
+    padding:14px;
+    border-radius:10px;
+    font-size:15px;
+    outline:none;
+}
+input:focus{
+    border-color:var(--cyan);
+}
+button{
+    background:var(--cyan);
+    border:none;
+    color:#00131b;
+    font-weight:800;
+    border-radius:10px;
+    padding:0 22px;
+    cursor:pointer;
+    transition:.25s;
+}
+button:hover{
+    transform:translateY(-2px);
+    box-shadow:0 0 20px rgba(0,212,255,.4);
+}
+main{
+    flex:1;
+    display:grid;
+    grid-template-columns:minmax(500px,2fr) 420px;
+    gap:18px;
+    padding:18px;
+    overflow:hidden;
+}
+.card{
+    background:rgba(13,21,38,.92);
+    border:1px solid var(--border);
+    border-radius:16px;
+    overflow:hidden;
+}
+.card-title{
+    padding:16px;
+    font-weight:700;
+    border-bottom:1px solid var(--border);
+    color:var(--cyan);
+}
+.browser{
+    display:flex;
+    flex-direction:column;
+}
+.browser-window{
+    flex:1;
+    min-height:300px;
+    position:relative;
+    background:white;
+    color:#222;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    overflow:hidden;
+}
+.browser-placeholder{
+    color:#778;
+    font-size:22px;
+    text-align:center;
+    padding:20px;
+}
+#websiteFrame{
+    width:100%;
+    height:100%;
+    min-height:300px;
+    border:none;
+    background:white;
+    flex:1;
+}
+.sidebar{
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+}
+.panel{
+    padding:18px;
+}
+.panel h3{
+    color:var(--cyan);
+    margin-bottom:15px;
+}
+.score{
+    text-align:center;
+    font-size:45px;
+    font-weight:800;
+    margin:15px;
+}
+.safe{color:var(--green);}
+.warning{color:var(--yellow);}
+.danger{color:var(--red);}
+.metric{
+    display:flex;
+    justify-content:space-between;
+    margin:10px 0;
+    color:var(--muted);
+}
+.value{
+    color:white;
+    font-weight:700;
+}
+.flag{
+    background:#111c32;
+    border-radius:8px;
+    padding:9px;
+    margin-top:8px;
+    font-size:13px;
+}
+.chat-box{
+    height:220px;
+    overflow:auto;
+    background:#080f1c;
+    border-radius:10px;
+    padding:12px;
+}
+.message{margin-bottom:12px;}
+.ai{
+    background:#111d33;
+    padding:10px;
+    border-radius:8px;
+}
+.user{
+    background:rgba(0,212,255,.12);
+    padding:10px;
+    border-radius:8px;
+}
+.chat-row{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+}
+.chat-row button{padding:0 15px;}
+@media(max-width:1000px){
+    main{
+        grid-template-columns:1fr;
+        overflow:auto;
+    }
+}
+</style>
+</head>
+
+<body>
+<header>
+    <div class="logo">CYBERONLINE PORTAL</div>
+    <div class="status">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusText">AI Ready</span>
+    </div>
+</header>
+
+<div class="toolbar">
+    <input id="urlInput" placeholder="Enter website URL...">
+    <button onclick="scanWebsite()">AI SCAN</button>
+</div>
+
+<main>
+    <section class="card browser">
+        <div class="card-title">Secure Website Preview</div>
+        <div class="browser-window" id="browserWindow">
+            <div class="browser-placeholder" id="browserPlaceholder">
+                Enter a website URL and click AI SCAN to preview it.
+            </div>
+            <iframe
+                id="websiteFrame"
+                title="Website security preview"
+                sandbox="allow-scripts allow-forms"
+                referrerpolicy="no-referrer"
+                loading="lazy"
+                style="display:none;"
+            ></iframe>
+        </div>
+    </section>
+
+    <section class="sidebar">
+        <div class="card panel">
+            <h3>Security Report</h3>
+            <div id="riskScore" class="score">--</div>
+            <div class="metric">
+                <span>Verdict</span>
+                <span id="verdict" class="value">Waiting</span>
+            </div>
+            <div class="metric">
+                <span>Domain</span>
+                <span id="domain" class="value">--</span>
+            </div>
+            <div id="flags"></div>
+        </div>
+
+        <div class="card panel">
+            <h3>AI Assistant</h3>
+            <div id="chatBox" class="chat-box">
+                <div class="message">
+                    <div class="ai">Enter a website URL to begin analysis.</div>
+                </div>
+            </div>
+            <div class="chat-row">
+                <input id="chatInput" placeholder="Ask about the scan...">
+                <button onclick="sendChat()">Send</button>
+            </div>
+        </div>
+    </section>
+</main>
+
+<script>
+/*
+IMPORTANT:
+This version expects a backend at /api/chat.
+Do not put your real API key in this HTML.
+The backend should call Groq using an API key stored securely
+as a server-side environment variable.
+*/
+
+const MODEL = "openai/gpt-oss-120b";
+let currentScan = null;
+let chatHistory = [];
+
+// Helpers
+function normalizeURL(url){
+    url = url.trim();
+    if (!/^https?:\/\//i.test(url)) {
+        url = "https://" + url;
+    }
+    return url;
+}
+
+function getDomain(url){
+    try{
+        return new URL(normalizeURL(url)).hostname;
+    }
+    catch{
+        return "Unknown";
+    }
+}
+
+// Website preview
+function loadWebsitePreview(url){
+    const frame = document.getElementById("websiteFrame");
+    const placeholder = document.getElementById("browserPlaceholder");
+
+    try{
+        const site = new URL(url);
+
+        if(site.protocol !== "https:" && site.protocol !== "http:"){
+            throw new Error("Invalid URL");
+        }
+
+        frame.src = site.href;
+        frame.style.display = "block";
+        placeholder.style.display = "none";
+    }
+    catch(error){
+        frame.removeAttribute("src");
+        frame.style.display = "none";
+        placeholder.style.display = "block";
+        placeholder.textContent = "Please enter a valid website URL.";
+    }
+}
+
+function addChat(type,text){
+    const box = document.createElement("div");
+    box.className = "message";
+    box.innerHTML = `
+        <div class="${type}">
+        ${escapeHtml(text)}
+        </div>
+    `;
+
+    document.getElementById("chatBox").appendChild(box);
+    document.getElementById("chatBox").scrollTop =
+        document.getElementById("chatBox").scrollHeight;
+}
+
+function escapeHtml(text){
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// AI connection: requires the /api/chat backend.
+async function askAI(prompt){
+    const response = await fetch("/api/chat", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({
+            model:MODEL,
+            temperature:0.0,
+            max_tokens:700,
+            messages:[
+                {
+                    role:"system",
+                    content:`
+You are CyberOnline Portal, a cybersecurity analyst.
+
+Analyze websites for potential security risks.
+
+Do not invent facts or claim to have checked public databases
+unless the information was actually verified. If information
+cannot be verified, state uncertainty.
+
+HTTPS is not proof that a website is safe.
+
+Return valid JSON for website scans, using this format:
+{
+ "score":0,
+ "verdict":"Safe",
+ "flags":[],
+ "summary":""
+}
+
+Score rules:
+0-30 = Safe
+31-70 = Warning
+71-100 = High Risk
+
+For general user questions, respond conversationally
+instead of returning JSON.
+`
+                },
+                ...chatHistory,
+                {role:"user", content:prompt}
+            ]
+        })
+    });
+
+    if(!response.ok){
+        throw new Error("AI request failed");
+    }
+
+    const data = await response.json();
+    return data?.choices?.[0]?.message?.content || "";
+}
+
+// Website scan
+async function scanWebsite(){
+    let url = document.getElementById("urlInput").value.trim();
+
+    if(!url){
+        alert("Enter a website URL");
+        return;
+    }
+
+    url = normalizeURL(url);
+
+    try{
+        const parsed = new URL(url);
+        if(parsed.protocol !== "https:" && parsed.protocol !== "http:"){
+            throw new Error("Invalid protocol");
+        }
+    }
+    catch{
+        alert("Enter a valid website URL.");
+        return;
+    }
+
+    loadWebsitePreview(url);
+
+    document.getElementById("statusText").textContent = "Analyzing...";
+    document.getElementById("statusDot").style.background = "#ffcc00";
+    addChat("ai","Analyzing website with AI...");
+
+    try{
+        const response = await askAI(`
+Analyze this website:
+
+${url}
+
+Domain:
+${getDomain(url)}
+
+Return the JSON security report.
+`);
+
+        let clean = response
+            .replace(/```json/g,"")
+            .replace(/```/g,"")
+            .trim();
+
+        currentScan = JSON.parse(clean);
+        displayReport(currentScan,url);
+
+        document.getElementById("statusText").textContent = "AI Online";
+        document.getElementById("statusDot").style.background = "#00e5a0";
+    }
+    catch(error){
+        console.error(error);
+        addChat("ai","AI response failed. Check your backend connection.");
+        document.getElementById("statusDot").style.background = "#ff4768";
+        document.getElementById("statusText").textContent = "AI Unavailable";
+    }
+}
+
+// Display report
+function displayReport(scan,url){
+    const score = document.getElementById("riskScore");
+    score.textContent = scan.score + "/100";
+    score.className = "score";
+
+    if(scan.score <= 30){
+        score.classList.add("safe");
+    }
+    else if(scan.score <= 70){
+        score.classList.add("warning");
+    }
+    else{
+        score.classList.add("danger");
+    }
+
+    document.getElementById("verdict").textContent = scan.verdict;
+    document.getElementById("domain").textContent = getDomain(url);
+
+    const flags = document.getElementById("flags");
+    flags.innerHTML = "";
+
+    if(scan.flags && scan.flags.length){
+        scan.flags.forEach(flag=>{
+            const item = document.createElement("div");
+            item.className = "flag";
+            item.textContent = "⚠ " + flag;
+            flags.appendChild(item);
+        });
+    }
+    else{
+        flags.innerHTML = `<div class="flag">No indicators detected.</div>`;
+    }
+
+    addChat("ai",`
+Risk Score:
+${scan.score}/100
+
+Verdict:
+${scan.verdict}
+
+Summary:
+${scan.summary}
+`);
+}
+
+// Chat
+async function sendChat(){
+    const input = document.getElementById("chatInput");
+    const message = input.value.trim();
+
+    if(!message) return;
+
+    input.value = "";
+    addChat("user",message);
+
+    chatHistory.push({
+        role:"user",
+        content:message
+    });
+
+    let context = "";
+
+    if(currentScan){
+        context = `
+Current scan:
+${JSON.stringify(currentScan)}
+`;
+    }
+
+    try{
+        const answer = await askAI(
+            context + `
+User question:
+${message}
+
+Answer briefly.
+`
+        );
+
+        addChat("ai",answer);
+        chatHistory.push({
+            role:"assistant",
+            content:answer
+        });
+    }
+    catch{
+        addChat("ai","AI unavailable. Check your backend connection.");
+    }
+}
+
+// Enter key shortcuts
+document.getElementById("urlInput").addEventListener("keydown",function(e){
+    if(e.key === "Enter"){
+        scanWebsite();
+    }
+});
+
+document.getElementById("chatInput").addEventListener("keydown",function(e){
+    if(e.key === "Enter"){
+        sendChat();
+    }
+});
+</script>
+</body>
+</html>
