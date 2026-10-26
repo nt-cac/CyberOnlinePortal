@@ -1,4 +1,3 @@
-
 [build]
   publish = "."
 
@@ -14,4 +13,3 @@
   from = "/api/scan"
   to = "/.netlify/functions/scan"
   status = 200
-
