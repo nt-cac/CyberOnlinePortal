@@ -1,300 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CyberOnline Portal</title>
-
-<style>
-:root{
-    --bg:#050914;
-    --panel:#0d1526;
-    --panel-light:#111d33;
-    --cyan:#00d4ff;
-    --green:#00e5a0;
-    --yellow:#ffcc00;
-    --red:#ff4768;
-    --text:#edf5ff;
-    --muted:#8292ad;
-    --border:rgba(0,212,255,.18);
-}
-*{
-    box-sizing:border-box;
-    margin:0;
-    padding:0;
-    font-family:"Segoe UI",Inter,Arial,sans-serif;
-}
-body{
-    height:100vh;
-    background:radial-gradient(circle at top right,#11294a,#050914 45%);
-    color:var(--text);
-    display:flex;
-    flex-direction:column;
-}
-header{
-    height:70px;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:0 25px;
-    background:rgba(13,21,38,.9);
-    border-bottom:1px solid var(--border);
-}
-.logo{
-    font-size:24px;
-    font-weight:800;
-    color:var(--cyan);
-    letter-spacing:1px;
-}
-.status{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    color:var(--muted);
-}
-.status-dot{
-    height:12px;
-    width:12px;
-    border-radius:50%;
-    background:var(--green);
-    box-shadow:0 0 15px var(--green);
-}
-.toolbar{
-    display:flex;
-    gap:12px;
-    padding:18px;
-    background:#080f1e;
-    border-bottom:1px solid var(--border);
-}
-input{
-    flex:1;
-    background:#111c32;
-    border:1px solid var(--border);
-    color:white;
-    padding:14px;
-    border-radius:10px;
-    font-size:15px;
-    outline:none;
-}
-input:focus{
-    border-color:var(--cyan);
-}
-button{
-    background:var(--cyan);
-    border:none;
-    color:#00131b;
-    font-weight:800;
-    border-radius:10px;
-    padding:0 22px;
-    cursor:pointer;
-    transition:.25s;
-}
-button:hover{
-    transform:translateY(-2px);
-    box-shadow:0 0 20px rgba(0,212,255,.4);
-}
-main{
-    flex:1;
-    display:grid;
-    grid-template-columns:minmax(500px,2fr) 420px;
-    gap:18px;
-    padding:18px;
-    overflow-y: auto;
-}
-.card{
-    background:rgba(13,21,38,.92);
-    border:1px solid var(--border);
-    border-radius:16px;
-    overflow:hidden;
-}
-.card-title{
-    padding:16px;
-    font-weight:700;
-    border-bottom:1px solid var(--border);
-    color:var(--cyan);
-}
-.browser{
-    display:flex;
-    flex-direction:column;
-}
-.browser-window{
-    flex:1;
-    min-height:300px;
-    position:relative;
-    background:white;
-    color:#222;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    overflow:hidden;
-}
-.browser-placeholder{
-    color:#778;
-    font-size:22px;
-    text-align:center;
-    padding:20px;
-}
-#websiteFrame{
-    width:100%;
-    height:100%;
-    min-height:300px;
-    border:none;
-    background:white;
-    flex:1;
-}
-.sidebar{
-    display:flex;
-    flex-direction:column;
-    gap:18px;
-}
-.panel{
-    padding:18px;
-}
-.panel h3{
-    color:var(--cyan);
-    margin-bottom:15px;
-}
-.score{
-    text-align:center;
-    font-size:45px;
-    font-weight:800;
-    margin:15px;
-}
-.safe{color:var(--green);}
-.warning{color:var(--yellow);}
-.danger{color:var(--red);}
-.metric{
-    display:flex;
-    justify-content:space-between;
-    margin:10px 0;
-    color:var(--muted);
-}
-.value{
-    color:white;
-    font-weight:700;
-}
-.flag{
-    background:#111c32;
-    border-radius:8px;
-    padding:9px;
-    margin-top:8px;
-    font-size:13px;
-}
-.chat-box{
-    height:220px;
-    overflow:auto;
-    background:#080f1c;
-    border-radius:10px;
-    padding:12px;
-}
-.message{margin-bottom:12px;}
-.ai{
-    background:#111d33;
-    padding:10px;
-    border-radius:8px;
-}
-.user{
-    background:rgba(0,212,255,.12);
-    padding:10px;
-    border-radius:8px;
-}
-.chat-row{
-    display:flex;
-    gap:8px;
-    margin-top:10px;
-}
-.chat-row button{padding:0 15px;}
-@media(max-width:1000px){
-    main{
-        grid-template-columns:1fr;
-        overflow:auto;
-    }
-}
-</style>
-</head>
-
-<body>
-<header>
-    <div class="logo">CYBERONLINE PORTAL</div>
-    <div class="status">
-        <div class="status-dot" id="statusDot"></div>
-        <span id="statusText">AI Ready</span>
-    </div>
-</header>
-
-<div class="toolbar">
-    <input id="urlInput" placeholder="Enter website URL...">
-    <button onclick="scanWebsite()">AI SCAN</button>
-</div>
-
-<main>
-    <section class="card browser">
-        <div class="card-title">Secure Website Preview</div>
-        <div class="browser-window" id="browserWindow">
-            <div class="browser-placeholder" id="browserPlaceholder">
-                Enter a website URL and click AI SCAN to preview it.
-            </div>
-            <iframe
-                id="websiteFrame"
-                title="Website security preview"
-                sandbox="allow-scripts allow-forms"
-                referrerpolicy="no-referrer"
-                loading="lazy"
-                style="display:none;"
-            ></iframe>
-        </div>
-    </section>
-
-    <section class="sidebar">
-        <div class="card panel">
-            <h3>Security Report</h3>
-            <div id="riskScore" class="score">--</div>
-            <div class="metric">
-                <span>Verdict</span>
-                <span id="verdict" class="value">Waiting</span>
-            </div>
-            <div class="metric">
-                <span>Domain</span>
-                <span id="domain" class="value">--</span>
-            </div>
-            <div id="flags"></div>
-        </div>
-
-        <div class="card panel">
-            <h3>AI Assistant</h3>
-            <div id="chatBox" class="chat-box">
-                <div class="message">
-                    <div class="ai">Enter a website URL to begin analysis.</div>
-                </div>
-            </div>
-            <div class="chat-row">
-                <input id="chatInput" placeholder="Ask about the scan...">
-                <button onclick="sendChat()">Send</button>
-            </div>
-        </div>
-    </section>
-</main>
 
 <script>
-/*
-IMPORTANT:
-This version expects a backend at /api/chat.
-Do not put your real API key in this HTML.
-The backend should call Groq using an API key stored securely
-as a server-side environment variable.
-*/
-
 const MODEL = "openai/gpt-oss-120b";
 let currentScan = null;
 let chatHistory = [];
 
-// Helpers
+// URL helpers
 function normalizeURL(url){
     url = url.trim();
-    if (!/^https?:\/\//i.test(url)) {
+
+    if(!/^https?:\/\//i.test(url)){
         url = "https://" + url;
     }
+
     return url;
 }
 
@@ -307,15 +24,195 @@ function getDomain(url){
     }
 }
 
+// Saved scan history
+function getScanHistory(){
+    try{
+        return JSON.parse(localStorage.getItem("cyberScanHistory")) || [];
+    }
+    catch{
+        return [];
+    }
+}
+
+function saveScan(url,scan){
+    let history = getScanHistory();
+
+    history.unshift({
+        url:url,
+        domain:getDomain(url),
+        score:scan.score,
+        verdict:scan.verdict,
+        flags:scan.flags,
+        summary:scan.summary,
+        date:new Date().toISOString()
+    });
+
+    history = history.slice(0,20);
+
+    try{
+        localStorage.setItem(
+            "cyberScanHistory",
+            JSON.stringify(history)
+        );
+    }
+    catch(error){
+        console.log("Could not save scan history.");
+    }
+}
+
+// Basic, repeatable URL checks
+function checkWebsite(url){
+    const site = new URL(url);
+    const host = site.hostname.toLowerCase();
+    const fullURL = url.toLowerCase();
+
+    let score = 0;
+    let flags = [];
+    let checks = [];
+
+    function addRisk(points,message){
+        score += points;
+        flags.push(message);
+    }
+
+    // HTTPS check
+    if(site.protocol === "http:"){
+        addRisk(
+            25,
+            "The URL uses HTTP instead of encrypted HTTPS."
+        );
+    }
+    else{
+        checks.push("The URL uses HTTPS.");
+    }
+
+    // IP address instead of a domain name
+    const isIPv4 =
+        /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
+
+    const isIPv6 = host.includes(":");
+
+    if(isIPv4 || isIPv6){
+        addRisk(
+            20,
+            "The website uses an IP address instead of a regular domain name."
+        );
+    }
+
+    // Internationalized domain name
+    if(host.includes("xn--")){
+        addRisk(
+            25,
+            "The domain contains encoded international characters that may need closer inspection."
+        );
+    }
+
+    // Username or password embedded in URL
+    if(site.username || site.password){
+        addRisk(
+            30,
+            "The URL contains embedded username or password information."
+        );
+    }
+
+    // Unusual port
+    if(site.port && site.port !== "80" && site.port !== "443"){
+        addRisk(
+            15,
+            "The URL uses a nonstandard web port."
+        );
+    }
+
+    // Suspicious words are warning signs, not proof
+    const suspiciousWords = [
+        "verify",
+        "password",
+        "signin",
+        "login",
+        "account",
+        "wallet",
+        "urgent",
+        "gift",
+        "free-prize"
+    ];
+
+    let foundWords = [];
+
+    suspiciousWords.forEach(word=>{
+        if(fullURL.includes(word)){
+            foundWords.push(word);
+        }
+    });
+
+    if(foundWords.length > 0){
+        addRisk(
+            Math.min(foundWords.length * 10,25),
+            "The URL contains potentially sensitive or deceptive terms: " +
+            foundWords.join(", ") + "."
+        );
+    }
+
+    // Very long hostname
+    if(host.length > 50){
+        addRisk(
+            10,
+            "The hostname is unusually long and deserves closer inspection."
+        );
+    }
+
+    // Excessive subdomains
+    const parts = host.split(".");
+
+    if(parts.length > 5){
+        addRisk(
+            10,
+            "The domain has an unusually large number of subdomains."
+        );
+    }
+
+    score = Math.min(score,100);
+
+    let verdict;
+
+    if(score <= 20){
+        verdict = "Low Apparent URL Risk";
+    }
+    else if(score <= 50){
+        verdict = "Warning";
+    }
+    else{
+        verdict = "High Apparent URL Risk";
+    }
+
+    if(flags.length === 0){
+        flags.push(
+            "No warning signs were found by these basic URL checks."
+        );
+    }
+
+    return {
+        score:score,
+        verdict:verdict,
+        flags:flags,
+        checks:checks,
+        summary:
+            "This score is based on basic URL characteristics, " +
+            "not a live malware scan or a full security audit. " +
+            "A low score does not prove that a website is safe."
+    };
+}
+
 // Website preview
 function loadWebsitePreview(url){
     const frame = document.getElementById("websiteFrame");
-    const placeholder = document.getElementById("browserPlaceholder");
+    const placeholder =
+        document.getElementById("browserPlaceholder");
 
     try{
         const site = new URL(url);
 
-        if(site.protocol !== "https:" && site.protocol !== "http:"){
+        if(site.protocol !== "https:" &&
+           site.protocol !== "http:"){
             throw new Error("Invalid URL");
         }
 
@@ -327,72 +224,59 @@ function loadWebsitePreview(url){
         frame.removeAttribute("src");
         frame.style.display = "none";
         placeholder.style.display = "block";
-        placeholder.textContent = "Please enter a valid website URL.";
+        placeholder.textContent =
+            "Please enter a valid website URL.";
     }
 }
 
+// Chat display
 function addChat(type,text){
     const box = document.createElement("div");
     box.className = "message";
-    box.innerHTML = `
-        <div class="${type}">
-        ${escapeHtml(text)}
-        </div>
-    `;
+
+    const message = document.createElement("div");
+    message.className = type;
+    message.textContent = text;
+
+    box.appendChild(message);
 
     document.getElementById("chatBox").appendChild(box);
     document.getElementById("chatBox").scrollTop =
         document.getElementById("chatBox").scrollHeight;
 }
 
-function escapeHtml(text){
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// AI connection: requires the /api/chat backend.
+// AI connection
 async function askAI(prompt){
-    const response = await fetch("/api/chat", {
+    const response = await fetch("/api/chat",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({
             model:MODEL,
-            temperature:0.0,
+            temperature:0,
             max_tokens:700,
             messages:[
                 {
                     role:"system",
                     content:`
-You are CyberOnline Portal, a cybersecurity analyst.
+You are the CyberOnline Portal AI assistant.
 
-Analyze websites for potential security risks.
+Explain cybersecurity concepts clearly and honestly.
 
-Do not invent facts or claim to have checked public databases
-unless the information was actually verified. If information
-cannot be verified, state uncertainty.
+When discussing a website scan, use only the scan
+information provided to you. Never invent security checks,
+threat database results, or confirmed vulnerabilities.
 
-HTTPS is not proof that a website is safe.
+The displayed score is calculated by fixed URL checks.
+Do not change that score or claim that a website is
+guaranteed safe.
 
-Return valid JSON for website scans, using this format:
-{
- "score":0,
- "verdict":"Safe",
- "flags":[],
- "summary":""
-}
-
-Score rules:
-0-30 = Safe
-31-70 = Warning
-71-100 = High Risk
-
-For general user questions, respond conversationally
-instead of returning JSON.
+A low URL risk score does not prove a website is safe.
+Explain limitations when relevant.
+Answer briefly unless more detail is requested.
 `
                 },
                 ...chatHistory,
-                {role:"user", content:prompt}
+                {role:"user",content:prompt}
             ]
         })
     });
@@ -402,6 +286,7 @@ instead of returning JSON.
     }
 
     const data = await response.json();
+
     return data?.choices?.[0]?.message?.content || "";
 }
 
@@ -418,8 +303,14 @@ async function scanWebsite(){
 
     try{
         const parsed = new URL(url);
-        if(parsed.protocol !== "https:" && parsed.protocol !== "http:"){
+
+        if(parsed.protocol !== "https:" &&
+           parsed.protocol !== "http:"){
             throw new Error("Invalid protocol");
+        }
+
+        if(!parsed.hostname || !parsed.hostname.includes(".")){
+            throw new Error("Invalid hostname");
         }
     }
     catch{
@@ -429,88 +320,84 @@ async function scanWebsite(){
 
     loadWebsitePreview(url);
 
-    document.getElementById("statusText").textContent = "Analyzing...";
-    document.getElementById("statusDot").style.background = "#ffcc00";
-    addChat("ai","Analyzing website with AI...");
+    document.getElementById("statusText").textContent =
+        "Checking URL...";
+    document.getElementById("statusDot").style.background =
+        "#ffcc00";
+
+    addChat("ai","Running basic URL security checks...");
 
     try{
-        const response = await askAI(`
-Analyze this website:
+        // The score comes from fixed rules, not AI guesses.
+        currentScan = checkWebsite(url);
 
-${url}
-
-Domain:
-${getDomain(url)}
-
-Return the JSON security report.
-`);
-
-        let clean = response
-            .replace(/```json/g,"")
-            .replace(/```/g,"")
-            .trim();
-
-        currentScan = JSON.parse(clean);
         displayReport(currentScan,url);
+        saveScan(url,currentScan);
 
-        document.getElementById("statusText").textContent = "AI Online";
-        document.getElementById("statusDot").style.background = "#00e5a0";
+        document.getElementById("statusText").textContent =
+            "Checks Complete";
+        document.getElementById("statusDot").style.background =
+            "#00e5a0";
+
     }
     catch(error){
         console.error(error);
-        addChat("ai","AI response failed. Check your backend connection.");
-        document.getElementById("statusDot").style.background = "#ff4768";
-        document.getElementById("statusText").textContent = "AI Unavailable";
+
+        addChat("ai","The URL could not be checked.");
+
+        document.getElementById("statusDot").style.background =
+            "#ff4768";
+        document.getElementById("statusText").textContent =
+            "Check Failed";
     }
 }
 
 // Display report
 function displayReport(scan,url){
     const score = document.getElementById("riskScore");
+
     score.textContent = scan.score + "/100";
     score.className = "score";
 
-    if(scan.score <= 30){
+    if(scan.score <= 20){
         score.classList.add("safe");
     }
-    else if(scan.score <= 70){
+    else if(scan.score <= 50){
         score.classList.add("warning");
     }
     else{
         score.classList.add("danger");
     }
 
-    document.getElementById("verdict").textContent = scan.verdict;
-    document.getElementById("domain").textContent = getDomain(url);
+    document.getElementById("verdict").textContent =
+        scan.verdict;
+
+    document.getElementById("domain").textContent =
+        getDomain(url);
 
     const flags = document.getElementById("flags");
     flags.innerHTML = "";
 
-    if(scan.flags && scan.flags.length){
-        scan.flags.forEach(flag=>{
-            const item = document.createElement("div");
-            item.className = "flag";
-            item.textContent = "⚠ " + flag;
-            flags.appendChild(item);
-        });
-    }
-    else{
-        flags.innerHTML = `<div class="flag">No indicators detected.</div>`;
-    }
+    scan.flags.forEach(flag=>{
+        const item = document.createElement("div");
+        item.className = "flag";
+        item.textContent = "⚠ " + flag;
+        flags.appendChild(item);
+    });
 
-    addChat("ai",`
-Risk Score:
-${scan.score}/100
-
-Verdict:
-${scan.verdict}
-
-Summary:
-${scan.summary}
-`);
+    addChat(
+        "ai",
+        "URL CHECK REPORT\n\n" +
+        "Domain: " + getDomain(url) + "\n" +
+        "Score: " + scan.score + "/100\n" +
+        "Verdict: " + scan.verdict + "\n\n" +
+        "Findings:\n- " + scan.flags.join("\n- ") + "\n\n" +
+        scan.summary + "\n\n" +
+        "This report has been saved in your local scan history."
+    );
 }
 
-// Chat
+// Chat and saved history
 async function sendChat(){
     const input = document.getElementById("chatInput");
     const message = input.value.trim();
@@ -520,6 +407,37 @@ async function sendChat(){
     input.value = "";
     addChat("user",message);
 
+    const lowerMessage = message.toLowerCase();
+
+    // Show locally saved scan history on request
+    if(
+        lowerMessage.includes("scan history") ||
+        lowerMessage.includes("previous scans") ||
+        lowerMessage.includes("past scans") ||
+        lowerMessage.includes("history")
+    ){
+        const history = getScanHistory();
+
+        if(history.length === 0){
+            addChat("ai","No saved scans yet. Scan a website first.");
+            return;
+        }
+
+        let result = "YOUR LAST " + history.length + " SCANS\n\n";
+
+        history.forEach((scan,index)=>{
+            result +=
+                (index + 1) + ". " + scan.domain + "\n" +
+                "Score: " + scan.score + "/100\n" +
+                "Verdict: " + scan.verdict + "\n" +
+                "Date: " + new Date(scan.date).toLocaleString() +
+                "\n\n";
+        });
+
+        addChat("ai",result);
+        return;
+    }
+
     chatHistory.push({
         role:"user",
         content:message
@@ -528,45 +446,50 @@ async function sendChat(){
     let context = "";
 
     if(currentScan){
-        context = `
-Current scan:
-${JSON.stringify(currentScan)}
-`;
+        context +=
+            "Current scan report:\n" +
+            JSON.stringify(currentScan) + "\n";
     }
 
     try{
         const answer = await askAI(
-            context + `
-User question:
-${message}
-
-Answer briefly.
-`
+            context +
+            "User question: " + message
         );
 
         addChat("ai",answer);
+
         chatHistory.push({
             role:"assistant",
             content:answer
         });
+
+        // Keep chat history from growing indefinitely
+        if(chatHistory.length > 20){
+            chatHistory = chatHistory.slice(-20);
+        }
     }
-    catch{
+    catch(error){
         addChat("ai","AI unavailable. Check your backend connection.");
     }
 }
 
 // Enter key shortcuts
-document.getElementById("urlInput").addEventListener("keydown",function(e){
-    if(e.key === "Enter"){
-        scanWebsite();
+document.getElementById("urlInput").addEventListener(
+    "keydown",
+    function(e){
+        if(e.key === "Enter"){
+            scanWebsite();
+        }
     }
-});
+);
 
-document.getElementById("chatInput").addEventListener("keydown",function(e){
-    if(e.key === "Enter"){
-        sendChat();
+document.getElementById("chatInput").addEventListener(
+    "keydown",
+    function(e){
+        if(e.key === "Enter"){
+            sendChat();
+        }
     }
-});
+);
 </script>
-</body>
-</html>
