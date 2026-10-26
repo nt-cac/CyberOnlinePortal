@@ -618,6 +618,7 @@ Answer user questions briefly and accurately.
 }
 
 // Website scan
+
 async function scanWebsite(){
     let url = document.getElementById("urlInput").value.trim();
 
@@ -631,13 +632,14 @@ async function scanWebsite(){
     try{
         const parsed = new URL(url);
 
-        if(parsed.protocol !== "https:" &&
-           parsed.protocol !== "http:"){
-            throw new Error("Invalid protocol");
-        }
-
-        if(!parsed.hostname || !parsed.hostname.includes(".")){
-            throw new Error("Invalid hostname");
+        if(
+            (parsed.protocol !== "https:" &&
+             parsed.protocol !== "http:") ||
+            !parsed.hostname.includes(".") ||
+            parsed.username ||
+            parsed.password
+        ){
+            throw new Error("Invalid URL");
         }
     }
     catch{
@@ -649,49 +651,56 @@ async function scanWebsite(){
     loadWebsitePreview(url);
 
     document.getElementById("statusText").textContent =
-        "Checking URL...";
+        "Checking threats...";
+
     document.getElementById("statusDot").style.background =
         "#ffcc00";
 
-    // The score does not depend on an AI-generated guess.
-    currentScan = checkWebsite(url);
+    addChat("ai","Checking the URL against Google Safe Browsing...");
 
-    displayReport(currentScan,url);
-    saveScan(url,currentScan);
-
-    document.getElementById("statusText").textContent =
-        "Checks Complete";
-    document.getElementById("statusDot").style.background =
-        "#00e5a0";
-
-    // Ask AI to explain the results, without changing the score.
     try{
-        const explanation = await askAI(
-            "Explain this URL check report in two or three sentences. " +
-            "Do not change its score. Do not claim a live threat scan " +
-            "was performed.\n\n" +
-            JSON.stringify({
-                url:url,
-                domain:getDomain(url),
-                score:currentScan.score,
-                verdict:currentScan.verdict,
-                flags:currentScan.flags,
-                summary:currentScan.summary
-            })
-        );
+        const response = await fetch("/api/scan",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({url:url})
+        });
 
-        if(explanation){
-            addChat("ai","AI Explanation:\n" + explanation);
+        const result = await response.json();
+
+        if(!response.ok){
+            throw new Error(
+                result.error || "Threat check failed."
+            );
         }
+
+        currentScan = result;
+
+        displayReport(currentScan,url);
+        saveScan(url,currentScan);
+
+        document.getElementById("statusText").textContent =
+            "Checks Complete";
+
+        document.getElementById("statusDot").style.background =
+            "#00e5a0";
+
     }
     catch(error){
-        console.error("AI explanation unavailable:",error);
+        console.error(error);
+
+        document.getElementById("statusText").textContent =
+            "Scan Unavailable";
+
+        document.getElementById("statusDot").style.background =
+            "#ff4768";
+
         addChat(
             "ai",
-            "The URL checks finished, but the AI explanation is unavailable."
+            "The scan could not be completed: " + error.message
         );
     }
 }
+
 
 // Display report
 function displayReport(scan,url){
