@@ -1,229 +1,285 @@
+exports.handler = async function(event){
+    const headers = {
+        "Content-Type":"application/json",
+        "Cache-Control":"no-store"
+    };
 
-exports.handler = async function(event) {
-    if(event.httpMethod !== "POST"){
+    function reply(statusCode,data){
         return {
-            statusCode:405,
-            body:JSON.stringify({error:"Method not allowed"})
+            statusCode:statusCode,
+            headers:headers,
+            body:JSON.stringify(data)
         };
+    }
+
+    if(event.httpMethod !== "POST"){
+        return reply(405,{
+            error:"Use POST to scan a URL."
+        });
     }
 
     const apiKey = process.env.GOOGLE_SAFE_BROWSING_API_KEY;
 
     if(!apiKey){
-        return {
-            statusCode:503,
-            body:JSON.stringify({
-                error:"Threat checking is not configured. Add the Google Safe Browsing API key in Netlify."
-            })
-        };
+        return reply(503,{
+            error:"Google Safe Browsing is not configured in Netlify."
+        });
     }
+
+    let url;
+    let site;
 
     try{
         const body = JSON.parse(event.body || "{}");
-        const url = String(body.url || "").trim();
 
-        let site;
+        if(typeof body.url !== "string" || !body.url.trim()){
+            return reply(400,{
+                error:"A URL is required."
+            });
+        }
 
-        try{
-            site = new URL(url);
+        url = body.url.trim();
+
+        if(!/^https?:\/\//i.test(url)){
+            url = "https://" + url;
         }
-        catch{
-            return {
-                statusCode:400,
-                body:JSON.stringify({error:"Invalid URL"})
-            };
-        }
+
+        site = new URL(url);
 
         if(
-            (site.protocol !== "https:" &&
-             site.protocol !== "http:") ||
+            (site.protocol !== "https:" && site.protocol !== "http:") ||
             !site.hostname.includes(".") ||
             site.username ||
             site.password
         ){
-            return {
-                statusCode:400,
-                body:JSON.stringify({error:"Invalid or unsupported URL"})
-            };
-        }
-
-        // Check the URL against Google's known threat lists.
-        const response = await fetch(
-            "https://safebrowsing.googleapis.com/v4/threatMatches:find?key=" +
-            encodeURIComponent(apiKey),
-            {
-                method:"POST",
-                headers:{
-                    "Content-Type":"application/json"
-                },
-                body:JSON.stringify({
-                    client:{
-                        clientId:"cyberonline-portal",
-                        clientVersion:"1.0"
-                    },
-                    threatInfo:{
-                        threatTypes:[
-                            "MALWARE",
-                            "SOCIAL_ENGINEERING",
-                            "UNWANTED_SOFTWARE",
-                            "POTENTIALLY_HARMFUL_APPLICATION"
-                        ],
-                        platformTypes:["ANY_PLATFORM"],
-                        threatEntryTypes:["URL"],
-                        threatEntries:[{url:site.href}]
-                    }
-                })
-            }
-        );
-
-        if(!response.ok){
-            console.error(
-                "Safe Browsing request failed:",
-                response.status
-            );
-
-            return {
-                statusCode:502,
-                body:JSON.stringify({
-                    error:"The threat database check failed. Please try again later."
-                })
-            };
-        }
-
-        const data = await response.json();
-        const matches = data.matches || [];
-
-        let score = 0;
-        let flags = [];
-
-        // A known threat is the strongest warning.
-        if(matches.length > 0){
-            score = 100;
-
-            matches.forEach(match=>{
-                flags.push(
-                    "Google Safe Browsing reported a known threat: " +
-                    String(match.threatType || "Threat detected") +
-                    "."
-                );
+            return reply(400,{
+                error:"Please provide a valid public website URL."
             });
         }
-        else{
-            // Apply consistent URL warning rules as well.
-            const host = site.hostname.toLowerCase();
-            const fullURL = site.href.toLowerCase();
 
-            function addRisk(points,message){
-                score += points;
-                flags.push(message);
-            }
+        url = site.href;
+    }
+    catch(error){
+        return reply(400,{
+            error:"The URL is invalid."
+        });
+    }
 
-            if(site.protocol === "http:"){
-                addRisk(
-                    15,
-                    "The connection uses HTTP rather than HTTPS."
-                );
-            }
+    // Ask Google Safe Browsing about this exact URL.
+    let googleData;
 
-            if(host.includes("xn--")){
-                addRisk(
-                    20,
-                    "The domain uses encoded international characters."
-                );
-            }
+    try{
+        const endpoint =
+            "https://safebrowsing.googleapis.com/v4/threatMatches:find" +
+            "?key=" + encodeURIComponent(apiKey);
 
-            if(/^(\d{1,3}\.){3}\d{1,3}$/.test(host)){
-                addRisk(
-                    20,
-                    "The website uses an IP address instead of a domain name."
-                );
-            }
-
-            if(host.length > 50){
-                addRisk(
-                    10,
-                    "The hostname is unusually long."
-                );
-            }
-
-            if(host.split(".").length > 5){
-                addRisk(
-                    10,
-                    "The domain has an unusually large number of subdomains."
-                );
-            }
-
-            const suspiciousWords = [
-                "free-prize",
-                "account-verify",
-                "password-reset",
-                "secure-login",
-                "urgent-payment"
-            ];
-
-            const foundWords = suspiciousWords.filter(
-                word => fullURL.includes(word)
-            );
-
-            if(foundWords.length > 0){
-                addRisk(
-                    Math.min(foundWords.length * 10,20),
-                    "Potentially suspicious URL patterns found: " +
-                    foundWords.join(", ") + "."
-                );
-            }
-
-            score = Math.min(score,70);
-        }
-
-        let verdict;
-
-        if(matches.length > 0){
-            verdict = "Known Threat Detected";
-        }
-        else if(score >= 40){
-            verdict = "High Apparent Risk";
-        }
-        else if(score >= 15){
-            verdict = "Warning";
-        }
-        else{
-            verdict = "No Known Threat Detected";
-        }
-
-        if(flags.length === 0){
-            flags.push(
-                "Google Safe Browsing reported no known threat for this URL. " +
-                "This does not guarantee the website is safe."
-            );
-        }
-
-        return {
-            statusCode:200,
+        const googleResponse = await fetch(endpoint,{
+            method:"POST",
             headers:{
                 "Content-Type":"application/json"
             },
             body:JSON.stringify({
-                score:score,
-                verdict:verdict,
-                flags:flags,
-                summary:
-                    matches.length > 0
-                    ? "A known threat was reported by Google Safe Browsing. Avoid interacting with this website."
-                    : "No known threat was reported by Google Safe Browsing. Additional URL warning checks were applied, but this is not a full security audit.",
-                checkedBy:"Google Safe Browsing and URL warning rules",
-                threatMatch:matches.length > 0
+                client:{
+                    clientId:"cyberonline-portal",
+                    clientVersion:"1.0"
+                },
+                threatInfo:{
+                    threatTypes:[
+                        "MALWARE",
+                        "SOCIAL_ENGINEERING",
+                        "UNWANTED_SOFTWARE",
+                        "POTENTIALLY_HARMFUL_APPLICATION"
+                    ],
+                    platformTypes:["ANY_PLATFORM"],
+                    threatEntryTypes:["URL"],
+                    threatEntries:[{url:url}]
+                }
             })
-        };
+        });
+
+        if(!googleResponse.ok){
+            console.error(
+                "Google Safe Browsing HTTP status:",
+                googleResponse.status
+            );
+
+            return reply(502,{
+                error:"Google Safe Browsing could not complete the check. Check the API configuration and try again."
+            });
+        }
+
+        googleData = await googleResponse.json();
     }
     catch(error){
-        console.error("Scan error:",error.message);
+        console.error("Google Safe Browsing request failed:",error);
 
-        return {
-            statusCode:500,
-            body:JSON.stringify({
-                error:"The scan could not be completed."
-            })
-        };
+        return reply(502,{
+            error:"Google Safe Browsing is temporarily unavailable."
+        });
     }
+
+    // A Google threat match is the strongest signal in this report.
+    const matches = Array.isArray(googleData.matches)
+        ? googleData.matches
+        : [];
+
+    if(matches.length > 0){
+        const threatTypes = [
+            ...new Set(matches.map(match => match.threatType))
+        ];
+
+        return reply(200,{
+            score:100,
+            verdict:"Known Threat Detected",
+            source:"Google Safe Browsing",
+            flags:[
+                "Google Safe Browsing identified a known threat match.",
+                "Threat categories: " + threatTypes.join(", ") + "."
+            ],
+            summary:
+                "Google Safe Browsing reported this URL as a known threat. " +
+                "Avoid entering personal information or downloading files from it."
+        });
+    }
+
+    // Google returned no known threat match.
+    // Apply additional, consistent URL warning rules.
+    let score = 0;
+    const flags = [];
+
+    function addRisk(points,message){
+        score += points;
+        flags.push(message);
+    }
+
+    const host = site.hostname.toLowerCase();
+    const fullURL = url.toLowerCase();
+
+    if(site.protocol === "http:"){
+        addRisk(
+            15,
+            "The URL uses HTTP instead of HTTPS."
+        );
+    }
+
+    const isIPv4 =
+        /^(\d{1,3}\.){3}\d{1,3}$/.test(host);
+
+    const isIPv6 = host.includes(":");
+
+    if(isIPv4 || isIPv6){
+        addRisk(
+            20,
+            "The URL uses an IP address instead of a regular domain name."
+        );
+    }
+
+    if(host.includes("xn--")){
+        addRisk(
+            25,
+            "The domain contains encoded international characters that deserve inspection."
+        );
+    }
+
+    if(site.port && site.port !== "80" && site.port !== "443"){
+        addRisk(
+            10,
+            "The URL uses a nonstandard web port."
+        );
+    }
+
+    const suspiciousWords = [
+        "verify",
+        "password",
+        "signin",
+        "login",
+        "account",
+        "wallet",
+        "urgent",
+        "gift",
+        "free-prize"
+    ];
+
+    const foundWords = [];
+
+    suspiciousWords.forEach(word=>{
+        if(fullURL.includes(word)){
+            foundWords.push(word);
+        }
+    });
+
+    if(foundWords.length > 0){
+        addRisk(
+            Math.min(foundWords.length * 8,20),
+            "Potentially sensitive or deceptive terms appear in the URL: " +
+            foundWords.join(", ") +
+            ". These words alone do not prove a threat."
+        );
+    }
+
+    if(host.length > 50){
+        addRisk(
+            5,
+            "The hostname is unusually long."
+        );
+    }
+
+    if(host.split(".").length > 5){
+        addRisk(
+            10,
+            "The domain has an unusually large number of subdomains."
+        );
+    }
+
+    score = Math.min(score,100);
+
+    let verdict;
+
+    if(score === 0){
+        verdict = "No Known Threats Detected";
+    }
+    else if(score <= 20){
+        verdict = "Can't Confirm";
+    }
+    else if(score <= 50){
+        verdict = "Warning";
+    }
+    else{
+        verdict = "High URL Risk Indicators";
+    }
+
+    if(flags.length === 0){
+        flags.push(
+            "Google Safe Browsing returned no known threat match."
+        );
+
+        flags.push(
+            "No warning signs were found by the additional URL checks."
+        );
+    }
+
+    let summary;
+
+    if(score === 0){
+        summary =
+            "Google Safe Browsing returned no known threat match, " +
+            "and the additional URL checks found no warning signs. " +
+            "This does not guarantee that the website is safe.";
+    }
+    else{
+        summary =
+            "Google Safe Browsing returned no known threat match, " +
+            "but the URL checks identified characteristics that deserve " +
+            "additional inspection. The score represents URL warning " +
+            "indicators, not the probability that the site is malicious. " +
+            "A threat can exist without appearing in a known threat list.";
+    }
+
+    return reply(200,{
+        score:score,
+        verdict:verdict,
+        source:"Google Safe Browsing + URL checks",
+        flags:flags,
+        summary:summary
+    });
 };
